@@ -1,65 +1,255 @@
-# Spring Pharmacy CRUD
+# 💊 Spring Pharmacy CRUD - Sistema de Gestão Farmacêutica
 
-This project is a basic CRUD application for managing a pharmacy, developed in Java using the Spring Framework. It was created as part of the Generation Brasil bootcamp and serves as a demonstration of backend development skills using Spring Boot.
+## 🎯 Objetivo de Aprendizado
+Sistema CRUD desenvolvido para estudar **gestão de dados relacionais** e **Spring Boot fundamentals**. Implementa gerenciamento completo de farmácia com **produtos**, **categorias** e **relacionamentos JPA**, aplicando validações e boas práticas de desenvolvimento backend.
 
-## Features
+## 🛠️ Tecnologias Utilizadas
+- **Framework:** Spring Boot, Spring Data JPA
+- **Banco de dados:** MySQL
+- **Build:** Maven
+- **Validação:** Bean Validation (JSR-303)
+- **Relacionamentos:** OneToMany, ManyToOne
+- **Testes:** JUnit (planejado)
 
-- **Product and Category Management**: The project allows creating, reading, updating, and deleting (CRUD) products and categories within the pharmacy.
-- **Relationships**: Implementation of `OneToMany` and `ManyToOne` relationships between Category and Product entities.
-- **Validations**: Includes basic validations to ensure data integrity.
+## 🚀 Demonstração
+```json
+// POST /categories - Criar categoria
+{
+  "nome": "Medicamentos",
+  "descricao": "Produtos farmacêuticos para tratamento médico"
+}
 
-## Technologies Used
+// POST /products - Criar produto
+{
+  "nome": "Paracetamol 500mg",
+  "descricao": "Analgésico e antitérmico",
+  "preco": 12.50,
+  "quantidade": 100,
+  "categoria": {
+    "id": 1
+  }
+}
 
-- **Java**: The programming language used.
-- **Spring Boot**: The primary framework for developing the application.
-- **Spring Data JPA**: For persistence management and database operations.
-- **MySQL**: The database used to store pharmacy data.
-- **Maven**: Dependency management and build tool.
+// GET /products - Listar produtos
+[
+  {
+    "id": 1,
+    "nome": "Paracetamol 500mg",
+    "preco": 12.50,
+    "quantidade": 100,
+    "categoria": {
+      "id": 1,
+      "nome": "Medicamentos"
+    }
+  }
+]
+```
 
-## How to Run the Project
+## 📁 Estrutura do Projeto
+```
+spring-pharmacy-crud/
+├── src/main/java/
+│   ├── controller/               # REST Controllers
+│   │   ├── ProductController.java # Endpoints de produtos
+│   │   └── CategoryController.java # Endpoints de categorias
+│   ├── model/                    # Entidades JPA
+│   │   ├── Product.java         # Entidade Produto
+│   │   └── Category.java        # Entidade Categoria
+│   ├── repository/               # Repositórios JPA
+│   │   ├── ProductRepository.java
+│   │   └── CategoryRepository.java
+│   └── PharmacyApplication.java  # Classe principal
+├── src/main/resources/
+│   └── application.properties    # Configurações
+├── pom.xml                       # Dependências Maven
+└── target/                       # Arquivos compilados
+```
 
-### Prerequisites
+## 💡 Principais Aprendizados
 
-- **JDK 11 or higher**
-- **MySQL** (or another compatible database)
-- **Maven**
+### 🗄️ Data Modeling
+- **Entity relationships:** Relacionamentos bidirecionais
+- **Foreign keys:** Chaves estrangeiras com JPA
+- **Cascade operations:** Operações em cascata
+- **Fetch strategies:** Lazy vs Eager loading
+- **Data integrity:** Validações e constraints
 
-### Steps to Run
+### 🔄 CRUD Operations
+- **Create:** Inserção de novos registros
+- **Read:** Consultas simples e complexas
+- **Update:** Atualização de dados existentes
+- **Delete:** Remoção com verificação de integridade
+- **Validation:** Validação de dados de entrada
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/FelipeAJdev/spring-farmacia-crud.git
-   cd spring-farmacia-crud
-   ```
+### 🏗️ Spring Boot Architecture
+- **Controller layer:** Endpoints REST bem estruturados
+- **Repository layer:** Abstração de acesso a dados
+- **Entity layer:** Mapeamento objeto-relacional
+- **Configuration:** Configuração de banco e aplicação
+- **Exception handling:** Tratamento de erros
 
-2. **Configure the database**:
-   - Create a MySQL database named `db_crudfarmacia`.
-   - Configure the database credentials in the `application.properties` file.
+## 🧠 Conceitos Técnicos Estudados
 
-3. **Run the application**:
-   ```bash
-   mvn spring-boot:run
-   ```
+### 1. **Entity Mapping**
+```java
+@Entity
+@Table(name = "tb_categories")
+public class Category {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @NotBlank(message = "Nome é obrigatório")
+    @Size(min = 2, max = 100, message = "Nome deve ter entre 2 e 100 caracteres")
+    private String nome;
+    
+    @Size(max = 500, message = "Descrição não pode exceder 500 caracteres")
+    private String descricao;
+    
+    @OneToMany(mappedBy = "categoria", cascade = CascadeType.REMOVE)
+    @JsonIgnoreProperties("categoria")
+    private List<Product> produtos = new ArrayList<>();
+    
+    // Constructors, getters, setters
+}
 
-4. **Access the application**:
-   - The application will be available at `http://localhost:8080`.
+@Entity
+@Table(name = "tb_products")
+public class Product {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @NotBlank(message = "Nome é obrigatório")
+    private String nome;
+    
+    @NotBlank(message = "Descrição é obrigatória")
+    private String descricao;
+    
+    @DecimalMin(value = "0.0", inclusive = false, message = "Preço deve ser maior que zero")
+    private BigDecimal preco;
+    
+    @Min(value = 0, message = "Quantidade não pode ser negativa")
+    private Integer quantidade;
+    
+    @ManyToOne
+    @JoinColumn(name = "categoria_id")
+    @JsonIgnoreProperties("produtos")
+    private Category categoria;
+}
+```
 
-## Endpoints
+### 2. **Repository Layer**
+```java
+@Repository
+public interface ProductRepository extends JpaRepository<Product, Long> {
+    
+    // Query methods derivados do nome
+    List<Product> findByNomeContainingIgnoreCase(String nome);
+    
+    List<Product> findByCategoriaId(Long categoriaId);
+    
+    List<Product> findByPrecoLessThan(BigDecimal preco);
+    
+    List<Product> findByQuantidadeGreaterThan(Integer quantidade);
+    
+    // Query personalizada
+    @Query("SELECT p FROM Product p WHERE p.preco BETWEEN :min AND :max")
+    List<Product> findByPrecoRange(@Param("min") BigDecimal min, 
+                                  @Param("max") BigDecimal max);
+}
 
-### Category
+@Repository
+public interface CategoryRepository extends JpaRepository<Category, Long> {
+    
+    List<Category> findByNomeContainingIgnoreCase(String nome);
+    
+    Optional<Category> findByNome(String nome);
+}
+```
 
-- **GET /categories**: Returns all categories.
-- **POST /categories**: Creates a new category.
-- **PUT /categories/{id}**: Updates an existing category.
-- **DELETE /categories/{id}**: Deletes an existing category.
+### 3. **Controller Implementation**
+```java
+@RestController
+@RequestMapping("/products")
+@CrossOrigin(origins = "*", allowedHeaders = "*")
+public class ProductController {
+    
+    @Autowired
+    private ProductRepository productRepository;
+    
+    @GetMapping
+    public ResponseEntity<List<Product>> getAll() {
+        return ResponseEntity.ok(productRepository.findAll());
+    }
+    
+    @GetMapping("/{id}")
+    public ResponseEntity<Product> getById(@PathVariable Long id) {
+        return productRepository.findById(id)
+            .map(product -> ResponseEntity.ok().body(product))
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @PostMapping
+    public ResponseEntity<Product> create(@Valid @RequestBody Product product) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+            .body(productRepository.save(product));
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<Product> update(@PathVariable Long id, 
+                                        @Valid @RequestBody Product product) {
+        return productRepository.findById(id)
+            .map(existingProduct -> {
+                product.setId(existingProduct.getId());
+                return ResponseEntity.ok(productRepository.save(product));
+            })
+            .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> delete(@PathVariable Long id) {
+        return productRepository.findById(id)
+            .map(product -> {
+                productRepository.delete(product);
+                return ResponseEntity.noContent().build();
+            })
+            .orElse(ResponseEntity.notFound().build());
+    }
+}
+```
 
-### Product
+## 🚧 Desafios Enfrentados
+1. **Relationship mapping:** Configuração correta de relacionamentos
+2. **Circular references:** Evitar referências circulares no JSON
+3. **Data validation:** Implementação de validações robustas
+4. **Database configuration:** Configuração do MySQL
+5. **Error handling:** Tratamento adequado de exceções
 
-- **GET /products**: Returns all products.
-- **POST /products**: Creates a new product.
-- **PUT /products/{id}**: Updates an existing product.
-- **DELETE /products/{id}**: Deletes an existing product.
+## 📚 Recursos Utilizados
+- [Spring Boot Documentation](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/)
+- [Spring Data JPA Reference](https://docs.spring.io/spring-data/jpa/docs/current/reference/html/)
+- [Bean Validation Specification](https://beanvalidation.org/2.0/spec/)
+- [Generation Brasil Bootcamp](https://brazil.generation.org/) - Bootcamp onde o projeto foi desenvolvido
 
-## Contribution
+## 📈 Próximos Passos
+- [ ] Implementar testes unitários e de integração
+- [ ] Adicionar sistema de autenticação
+- [ ] Criar sistema de estoque avançado
+- [ ] Implementar relatórios de vendas
+- [ ] Adicionar sistema de fornecedores
+- [ ] Criar interface web com Thymeleaf
 
-Feel free to open issues and pull requests for improvements and fixes.
+## 🔗 Projetos Relacionados
+- [React Pharmacy Front](../react-pharmacy-front/) - Frontend da aplicação
+- [Spring GameStore](../spring-gamestore/) - Sistema similar com jogos
+- [Spring Bookstore Management](../spring-bookstore-management/) - Gestão de livros
+
+---
+
+**Desenvolvido por:** Felipe Macedo  
+**Contato:** contato.dev.macedo@gmail.com  
+**GitHub:** [FelipeMacedo](https://github.com/felipemacedo1)  
+**LinkedIn:** [felipemacedo1](https://linkedin.com/in/felipemacedo1)
+
+> 💡 **Reflexão:** Este projeto foi essencial para consolidar os fundamentos do Spring Boot e JPA. A implementação de relacionamentos entre entidades e validações proporcionou base sólida para projetos mais complexos.
